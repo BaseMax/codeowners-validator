@@ -10,6 +10,14 @@ A simple Python script to validate and check the existence of paths defined in a
 - Checks if the paths exist in the repository.
 - Outputs results with ✅ (exists) or ❌ (missing).
 
+## Running on-the-fly
+
+A single bash line that will download the script and run it using Python (either python or python3 depending on what is available):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/BaseMax/codeowners-validator/refs/heads/main/codeowners_validator.py -o codeowners_validator.py && (python3 codeowners_validator.py || python codeowners_validator.py)
+```
+
 ## Installation
 
 Clone the repository:
