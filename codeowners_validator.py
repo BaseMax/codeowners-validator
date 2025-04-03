@@ -8,10 +8,10 @@ import argparse
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
-def setup_logging():
+def setup_logging(log_file):
     """Configure logging settings."""
     logging.basicConfig(
-        filename="codeowners_check.log",
+        filename=log_file,
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
@@ -25,37 +25,46 @@ def extract_paths(lines):
     """Extract paths from lines by taking text before first '@' and normalizing them."""
     return [line.split(" ")[0].lstrip("/") for line in lines]
 
-def check_path_exists(path, base_dir):
+def check_path_exists(path, base_dir, verbose=False):
     """Check if a given path exists and log the result."""
     full_path = os.path.join(base_dir, path)
-    status = "✅ Exists" if os.path.exists(full_path) else "❌ Missing"
-    logging.info(f"{status}: {path}")
-    return f"{status}: {path}"
+    if os.path.exists(full_path):
+        if verbose:
+            logging.info(f"Checked {path}: Exists")
+        return None
+    else:
+        status = f"❌ Missing: {path}"
+        logging.info(status)
+        return status
 
-def check_paths_exist(paths, base_dir):
-    """Check all extracted paths in parallel."""
+def check_paths_exist(paths, base_dir, exclude_dirs=None, verbose=False):
+    """Check all extracted paths in parallel and exclude specific directories."""
     with ThreadPoolExecutor() as executor:
-        results = list(executor.map(lambda path: check_path_exists(path, base_dir), paths))
+        results = list(executor.map(lambda path: check_path_exists(path, base_dir, verbose), paths))
+
     for result in results:
-        print(result)
+        if result and (not exclude_dirs or not any(exclude in result for exclude in exclude_dirs)):
+            print(result)
 
 def main():
     """Main function to execute the script."""
     parser = argparse.ArgumentParser(description="Check if CODEOWNERS paths exist.")
     parser.add_argument("-f", "--file", default=".github/CODEOWNERS", help="Path to CODEOWNERS file")
     parser.add_argument("-d", "--dir", default=os.getcwd(), help="Project root directory")
+    parser.add_argument("-e", "--exclude", nargs="*", default=[], help="List of directories/files to exclude from the check (e.g., docs/ tests/)")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed verbose output")
+    parser.add_argument("-l", "--log", default="codeowners_check.log", help="Custom log file")
     args = parser.parse_args()
-    
-    setup_logging()
-    
+
+    setup_logging(args.log)
+
     if not os.path.exists(args.file):
         print("CODEOWNERS file not found!")
         return
-    
+
     lines = get_valid_lines(args.file)
     paths = extract_paths(lines)
-    check_paths_exist(paths, args.dir)
+    check_paths_exist(paths, args.dir, exclude_dirs=args.exclude, verbose=args.verbose)
 
 if __name__ == "__main__":
     main()
-    
